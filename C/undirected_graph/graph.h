@@ -8,6 +8,8 @@ typedef struct graph graph_t;
 typedef vnode_t vlist_t;
 typedef hnode_t hlist_t;
 typedef enum STATUS status_t;
+typedef enum COLOR color_t;
+typedef struct queue_node queue_node_t;
 
 enum STATUS
 {
@@ -16,10 +18,18 @@ enum STATUS
     G_INCINSISTENT_EDGE         =   -3,
     G_EXISTING_EDGE             =   -4,
     G_INVALID_EDGE              =   -5,
+    G_QUEUE_EMPTY               =   -6,
 
     SUCCESS                     =   1,
     TRUE                        =   1,
     FALSE                       =   0
+};
+
+enum COLOR
+{
+    WHITE = 0,
+    GREY,
+    BLACK
 };
 
 struct hnode
@@ -32,6 +42,7 @@ struct hnode
 struct vnode
 {
     vertex_t v;
+    color_t color;
     hnode_t* ph_edges_head_node;
     struct vnode* next;
     struct vnode* prev;
@@ -42,6 +53,13 @@ struct graph
     vnode_t* pv_vertex_head_node;
     unsigned long nr_vertices;
     unsigned long nr_edges;
+};
+
+struct queue_node
+{
+    vnode_t* pv_node;
+    struct queue_node* q_next;
+    struct queue_node* q_prev;
 };
 
 /*Graph related function*/
@@ -70,5 +88,23 @@ hnode_t* h_search_node(hlist_t* ph_list, vertex_t _v);
 hnode_t* h_get_hlist_node(vertex_t _v);
 
 void* xmalloc(unsigned long nr_bytes);
+
+/* Traversal DFS and BFS*/
+void dfs(graph_t* gr);
+status_t bfs(graph_t* gr, vertex_t v);
+
+/*DFS helper funtions*/
+void reset(graph_t* gr);
+void dfs_visit(graph_t* gr, vnode_t* pv);
+
+/*BFS helper functions*/
+queue_node_t* create_queue(void);
+status_t enqueue(queue_node_t* p_queue, vnode_t* pv_node);
+status_t dequeue(queue_node_t* p_queue, vnode_t** pp_node);
+int is_queue_empty(queue_node_t* p_queue);
+status_t destroy_queue(queue_node_t* pv_node);
+void q_generic_insert(queue_node_t* p_beg, queue_node_t* p_mid, queue_node_t* p_end);
+void q_generic_delete(queue_node_t* p_delete_node);
+queue_node_t* q_get_node(vnode_t* pv_node);
 
 #endif

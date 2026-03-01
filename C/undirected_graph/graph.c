@@ -134,6 +134,7 @@ status_t show_graph(graph_t* gr, const char* msg)
         puts("[END]");
     }
     puts("--------------------------------------------------------------"); 
+    return SUCCESS;
 }
 
 status_t destroy_graph(graph_t** _gr)
@@ -204,9 +205,12 @@ vnode_t* v_get_vlist_node(vertex_t _v)
 {
     vnode_t* new_node = (vnode_t*)xmalloc(sizeof(vnode_t));
     new_node -> v = _v;
+    new_node->color = WHITE;
     new_node->ph_edges_head_node = h_create_list();
     new_node -> next = NULL;
-    new_node -> prev = NULL;    
+    new_node -> prev = NULL; 
+    
+    return new_node;
 }
 
 /*Function to maintain vertices list*/
@@ -256,6 +260,8 @@ hnode_t* h_get_hlist_node(vertex_t _v)
     new_node -> v = _v;
     new_node -> next = NULL;
     new_node -> prev = NULL;
+
+    return new_node;
 }
 
 void* xmalloc(unsigned long nr_bytes)
@@ -268,4 +274,164 @@ void* xmalloc(unsigned long nr_bytes)
         exit(EXIT_FAILURE);
     }
     return p;
+}
+
+void dfs(graph_t* gr)
+{
+    vnode_t* pv_run = NULL;
+    reset(gr);
+    printf("DFS Traversal [START]->");
+    for(pv_run = gr->pv_vertex_head_node->next; pv_run != gr -> pv_vertex_head_node; pv_run = pv_run -> next)
+    {
+        if(pv_run -> color == WHITE)
+            dfs_visit(gr, pv_run);
+    }
+    printf("[END]\n");
+}
+
+status_t bfs(graph_t* gr, vertex_t v)
+{
+    vnode_t* pv_node = NULL;
+    vnode_t* pv = NULL;
+    vnode_t* pv_h_in_vlist = NULL;
+    hnode_t* ph_run = NULL;
+    queue_node_t* p_queue = NULL;
+    status_t status;
+
+    pv_node = v_search_node(gr->pv_vertex_head_node, v);
+    if(pv_node == NULL)
+        return G_INVALID_VERTEX;
+
+    reset(gr);
+    pv_node -> color = GREY;
+
+    p_queue = create_queue();
+    status = enqueue(p_queue, pv_node);
+    assert(status == SUCCESS);
+    
+    printf("BFS Traversal [START]->");
+
+    while(is_queue_empty(p_queue) != TRUE)
+    {
+        pv = NULL;
+        status = dequeue(p_queue, &pv);
+        assert(status == SUCCESS && pv != NULL);
+
+        printf("[%d]<->", pv->v);
+        for(ph_run = pv->ph_edges_head_node->next; ph_run != pv->ph_edges_head_node; ph_run = ph_run->next)
+        {
+            pv_h_in_vlist = v_search_node(gr->pv_vertex_head_node, ph_run->v);
+            if(pv_h_in_vlist-> color == WHITE)
+            {
+                pv_h_in_vlist->color = GREY;
+                enqueue(p_queue, pv_h_in_vlist);
+            }
+        }
+        pv->color = BLACK;
+    }
+    printf("[END]\n");
+    return SUCCESS;
+}
+
+void reset(graph_t* gr)
+{
+    vnode_t* pv_run = NULL;
+
+    for(pv_run = gr->pv_vertex_head_node->next; pv_run != gr->pv_vertex_head_node; pv_run = pv_run -> next)
+        pv_run -> color = WHITE;
+}
+
+void dfs_visit(graph_t* gr, vnode_t* pv)
+{
+    hnode_t* ph_run = NULL;
+    vnode_t* pv_h_in_vlist = NULL;
+
+    pv->color = GREY;
+    printf("[%d]->", pv->v);
+
+    for(ph_run = pv ->ph_edges_head_node->next; ph_run != pv->ph_edges_head_node; ph_run = ph_run->next)
+    {
+        pv_h_in_vlist = v_search_node(gr->pv_vertex_head_node, ph_run->v);
+        if(pv_h_in_vlist->color == WHITE)
+            dfs_visit(gr, pv_h_in_vlist);
+    }
+
+    pv->color = BLACK;
+}
+
+queue_node_t* create_queue(void)
+{
+    queue_node_t* p_new_queue = NULL;
+    p_new_queue = q_get_node(NULL);
+    p_new_queue -> q_next = p_new_queue;
+    p_new_queue -> q_prev = p_new_queue;
+
+    return p_new_queue;
+}
+
+status_t enqueue(queue_node_t* p_queue, vnode_t* pv_node)
+{
+    q_generic_insert(p_queue->q_prev, q_get_node(pv_node), p_queue);
+    return SUCCESS;
+}   
+
+status_t dequeue(queue_node_t* p_queue, vnode_t** pp_node)
+{
+    if (is_queue_empty(p_queue) == TRUE)
+	{
+		*pp_node = NULL;
+		return (G_QUEUE_EMPTY);
+	} 
+
+	*pp_node = p_queue->q_next->pv_node; 
+	q_generic_delete(p_queue->q_next); 
+	return (SUCCESS);
+}
+
+int is_queue_empty(queue_node_t* p_queue)
+{
+    return (p_queue->q_next == p_queue && p_queue->q_prev == p_queue); 
+}
+
+status_t destroy_queue(queue_node_t* p_queue)
+{
+    queue_node_t* pq_run = NULL;
+	queue_node_t* pq_run_next = NULL;
+
+	for (pq_run = p_queue->q_next; pq_run != p_queue; pq_run = pq_run_next)
+	{
+		pq_run_next = pq_run->q_next; 
+		free(pq_run); 
+	}
+
+	free(p_queue); 
+
+	return (SUCCESS);     
+}
+
+void q_generic_insert(queue_node_t* p_beg, queue_node_t* p_mid, queue_node_t* p_end)
+{
+	p_mid->q_next = p_end; 
+	p_mid->q_prev = p_beg; 
+	p_beg->q_next = p_mid; 
+	p_end->q_prev = p_mid; 
+}
+
+void q_generic_delete(queue_node_t* p_delete_node)
+{
+	p_delete_node->q_prev->q_next = p_delete_node->q_next; 
+	p_delete_node->q_next->q_prev = p_delete_node->q_prev; 
+	free(p_delete_node); 
+}
+
+queue_node_t* q_get_node(vnode_t* pv_node)
+{
+	queue_node_t* p_new_node = NULL; 
+
+	p_new_node = (queue_node_t*)xmalloc(sizeof(queue_node_t)); 
+	p_new_node->pv_node = pv_node; 
+	p_new_node->q_prev = NULL; 
+	p_new_node->q_next = NULL; 
+
+	return (p_new_node); 
 }
